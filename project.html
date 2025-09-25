@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOA Project Cost Calculator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* A little extra style for a smooth transition on the result box */
+        #result-container {
+            transition: all 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans py-12">
+    <div class="w-full max-w-2xl p-8 space-y-8 bg-white rounded-xl shadow-lg">
+        
+        <!-- Header Section -->
+        <div>
+            <h1 class="text-3xl font-bold text-center text-gray-800">Project Cost Calculator</h1>
+            <p class="mt-2 text-center text-gray-600">Estimate your unit's portion of a project cost based on potential insurance coverage.</p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="space-y-6">
+            <!-- Total Project Cost Input -->
+            <div>
+                <label for="total-project-cost" class="block text-sm font-medium text-gray-700">Total Project Cost</label>
+                <input type="text" id="total-project-cost" value="$5,000,000" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <!-- Unit Number Selection -->
+            <div>
+                <label for="unit-number" class="block text-sm font-medium text-gray-700">Select Your Unit Number</label>
+                <select id="unit-number" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="">-- Please select a unit --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Result Display -->
+        <div id="result-container" class="opacity-0 pt-6 mt-6 border-t border-gray-200 space-y-6">
+            <!-- Summary Range -->
+            <div class="bg-indigo-50 p-6 rounded-lg text-center">
+                <p class="text-base text-indigo-800">Potential Special Assessment Range:</p>
+                <p id="assessment-range" class="text-3xl font-bold text-indigo-900 mt-1">$0.00 - $0.00</p>
+                <p id="ownership-percentage" class="text-sm text-indigo-700 mt-2"></p>
+            </div>
+
+            <!-- Detailed Breakdown Table -->
+            <div class="overflow-x-auto">
+                <h3 class="text-lg font-semibold text-center text-gray-800 mb-4">Breakdown by Insurance Coverage</h3>
+                <div class="border border-gray-200 rounded-lg shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Insurance Coverage
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Your Estimated Portion
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be dynamically injected here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center pt-4">
+            <p class="text-xs text-gray-400">Disclaimer: This tool is for estimation purposes only. Please refer to official HOA documents for final figures.</p>
+        </div>
+    </div>
+
+        <!-- Import shared ownership data -->
+    <script src="ownerships.js"></script>
+
+    <script>
+        // Get references to HTML elements
+        const totalCostInput = document.getElementById('total-project-cost');
+        const unitSelect = document.getElementById('unit-number');
+        const resultContainer = document.getElementById('result-container');
+        const assessmentRangeEl = document.getElementById('assessment-range');
+        const ownershipPercentageEl = document.getElementById('ownership-percentage');
+        const resultTableBody = document.getElementById('result-table-body');
+
+        function populateUnitSelector() {
+            const units = Object.keys(ownershipData).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit;
+                option.textContent = `Unit ${unit}`;
+                unitSelect.appendChild(option);
+            });
+        }
+
+        function formatCurrency(value) {
+            // Remove all non-numeric characters except decimal point
+            const numericValue = value.replace(/[^\d.]/g, '');
+            const number = parseFloat(numericValue) || 0;
+            
+            // If the value is 0 or empty, return empty string
+            if (number === 0) {
+                return '';
+            }
+            
+            return number.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        function parseCurrency(value) {
+            // Remove all non-numeric characters except decimal point
+            const numericValue = value.replace(/[^\d.]/g, '');
+            return parseFloat(numericValue) || 0;
+        }
+
+        function calculateAssessment() {
+            const totalAmount = parseCurrency(totalCostInput.value);
+            const selectedUnit = unitSelect.value;
+
+            resultTableBody.innerHTML = ''; // Clear previous results
+
+            if (!selectedUnit) {
+                resultContainer.classList.add('opacity-0');
+                return;
+            }
+
+            const unitOwnership = ownershipData[selectedUnit];
+            const formattedOwnership = (unitOwnership * 100).toFixed(2) + '%';
+            ownershipPercentageEl.textContent = `Based on your ${formattedOwnership} ownership.`;
+
+            const insuranceLevels = [0, 10, 20, 30, 40, 50, 60, 70, 80];
+            let amounts = [];
+
+            insuranceLevels.forEach(insPercent => {
+                const costAfterInsurance = totalAmount * (1 - (insPercent / 100));
+                const calculatedAmount = costAfterInsurance * unitOwnership;
+                amounts.push(calculatedAmount);
+
+                const row = document.createElement('tr');
+                 if (insuranceLevels.indexOf(insPercent) % 2 !== 0) {
+                    row.classList.add('bg-gray-50');
+                }
+                
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${insPercent}%</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right font-mono">${calculatedAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                `;
+                resultTableBody.appendChild(row);
+            });
+
+            const minAmount = amounts[amounts.length - 1];
+            const maxAmount = amounts[0];
+            
+            assessmentRangeEl.textContent = `${minAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} - ${maxAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+            
+            resultContainer.classList.remove('opacity-0');
+        }
+
+        // --- Event Listeners ---
+        totalCostInput.addEventListener('input', function(e) {
+            const cursorPosition = e.target.selectionStart;
+            const oldValue = e.target.value;
+            const newValue = formatCurrency(oldValue);
+            
+            if (newValue !== oldValue) {
+                e.target.value = newValue;
+                // Adjust cursor position to account for formatting changes
+                const diff = newValue.length - oldValue.length;
+                e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
+            }
+            
+            calculateAssessment();
+        });
+        
+        unitSelect.addEventListener('change', calculateAssessment);
+
+        // --- Initialize ---
+        document.addEventListener('DOMContentLoaded', populateUnitSelector);
+    </script>
+</body>
+</html>
+
