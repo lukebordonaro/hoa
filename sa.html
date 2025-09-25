@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOA Special Assessment Calculator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* A little extra style for a smooth transition on the result box */
+        #result-container {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans">
+    <div class="w-full max-w-lg p-8 space-y-8 bg-white rounded-xl shadow-lg">
+        
+        <!-- Header Section -->
+        <div>
+            <h1 class="text-3xl font-bold text-center text-gray-800">Special Assessment Calculator</h1>
+            <p class="mt-2 text-center text-gray-600">Estimate your portion of a special assessment.</p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="space-y-6">
+            <!-- Total Assessment Amount Input -->
+            <div>
+                <label for="total-assessment" class="block text-sm font-medium text-gray-700">Total Assessment Amount</label>
+                <input type="text" id="total-assessment" value="$1,000,000" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <!-- Unit Number Selection -->
+            <div>
+                <label for="unit-number" class="block text-sm font-medium text-gray-700">Select Your Unit Number</label>
+                <select id="unit-number" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <option value="">-- Please select a unit --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Result Display -->
+        <div id="result-container" class="opacity-0 pt-4 border-t border-gray-200">
+             <div class="bg-indigo-50 p-6 rounded-lg text-center">
+                <p class="text-base text-indigo-800">Your Estimated Portion:</p>
+                <p id="assessment-result" class="text-4xl font-bold text-indigo-900 mt-2">$0.00</p>
+                <p id="ownership-percentage" class="text-sm text-indigo-700 mt-1"></p>
+             </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="text-center">
+            <p class="text-xs text-gray-400">Disclaimer: This tool is for estimation purposes only. Please refer to official HOA documents for final figures.</p>
+        </div>
+    </div>
+
+            <!-- Import shared ownership data -->
+    <script src="ownerships.js"></script>
+
+    <script>
+        // Get references to the HTML elements we'll be working with
+        const totalAssessmentInput = document.getElementById('total-assessment');
+        const unitSelect = document.getElementById('unit-number');
+        const resultContainer = document.getElementById('result-container');
+        const assessmentResultEl = document.getElementById('assessment-result');
+        const ownershipPercentageEl = document.getElementById('ownership-percentage');
+
+        // --- Step 1: Populate the dropdown menu with unit numbers ---
+        function populateUnitSelector() {
+            // Get all the unit numbers from our data object
+            const units = Object.keys(ownershipData);
+            units.sort(); // Sort them for easy selection
+            
+            // Create an <option> for each unit and add it to the dropdown
+            units.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit;
+                option.textContent = `Unit ${unit}`;
+                unitSelect.appendChild(option);
+            });
+        }
+
+        function formatCurrency(value) {
+            // Remove all non-numeric characters except decimal point
+            const numericValue = value.replace(/[^\d.]/g, '');
+            const number = parseFloat(numericValue) || 0;
+            
+            // If the value is 0 or empty, return empty string
+            if (number === 0) {
+                return '';
+            }
+            
+            return number.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        function parseCurrency(value) {
+            // Remove all non-numeric characters except decimal point
+            const numericValue = value.replace(/[^\d.]/g, '');
+            return parseFloat(numericValue) || 0;
+        }
+
+        // --- Step 2: Create the calculation function ---
+        function calculateAssessment() {
+            const totalAmount = parseCurrency(totalAssessmentInput.value);
+            const selectedUnit = unitSelect.value;
+
+            // If a unit is not selected, hide the result and do nothing
+            if (!selectedUnit) {
+                resultContainer.classList.add('opacity-0');
+                return;
+            }
+
+            // Get the ownership percentage for the selected unit
+            const percentage = ownershipData[selectedUnit];
+            const calculatedAmount = totalAmount * percentage;
+            
+            // Format the numbers for display
+            const formattedAmount = calculatedAmount.toLocaleString('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            });
+            const formattedPercentage = (percentage * 100).toFixed(2) + '%';
+
+            // Display the results
+            assessmentResultEl.textContent = formattedAmount;
+            ownershipPercentageEl.textContent = `Based on your ${formattedPercentage} ownership.`;
+            
+            // Make the result container visible
+            resultContainer.classList.remove('opacity-0');
+        }
+
+        // --- Step 3: Set up event listeners ---
+        // Listen for changes on both the number input and the unit dropdown
+        totalAssessmentInput.addEventListener('input', function(e) {
+            const cursorPosition = e.target.selectionStart;
+            const oldValue = e.target.value;
+            const newValue = formatCurrency(oldValue);
+            
+            if (newValue !== oldValue) {
+                e.target.value = newValue;
+                // Adjust cursor position to account for formatting changes
+                const diff = newValue.length - oldValue.length;
+                e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
+            }
+            
+            calculateAssessment();
+        });
+        
+        unitSelect.addEventListener('change', calculateAssessment);
+
+        // --- Step 4: Initialize the page ---
+        // When the page loads, populate the unit selector right away
+        document.addEventListener('DOMContentLoaded', () => {
+            populateUnitSelector();
+        });
+
+    </script>
+</body>
+</html>
