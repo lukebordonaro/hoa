@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special Assessment - All Units</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #result-container {
+            transition: all 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen font-sans py-12">
+    <div class="w-full max-w-2xl p-8 space-y-8 bg-white rounded-xl shadow-lg">
+        <!-- Header Section -->
+        <div>
+            <h1 class="text-3xl font-bold text-center text-gray-800">Special Assessment Breakdown Calculator</h1>
+            <p class="mt-2 text-center text-gray-600">Enter a special assessment amount to see what every unit would pay.</p>
+        </div>
+        <!-- Input Form -->
+        <div class="space-y-6">
+            <div>
+                <label for="assessment-amount" class="block text-sm font-medium text-gray-700">Special Assessment Amount</label>
+                <input type="text" id="assessment-amount" value="$100,000" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+        </div>
+        <!-- Result Display -->
+        <div id="result-container" class="opacity-0 pt-6 mt-6 border-t border-gray-200 space-y-6">
+            <!-- Summary Range -->
+            <div class="bg-indigo-50 p-6 rounded-lg text-center">
+                <p class="text-base text-indigo-800">Range for All Units:</p>
+                <p id="assessment-range" class="text-3xl font-bold text-indigo-900 mt-1">$0.00 - $0.00</p>
+            </div>
+            <!-- Detailed Breakdown Table -->
+            <div class="overflow-x-auto">
+                <h3 class="text-lg font-semibold text-center text-gray-800 mb-4">Breakdown by Unit</h3>
+                <div class="border border-gray-200 rounded-lg shadow-sm">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="result-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be dynamically injected here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="text-center pt-4">
+            <p class="text-xs text-gray-400">Disclaimer: This tool is for estimation purposes only. Please refer to official HOA documents for final figures.</p>
+        </div>
+    </div>
+    <!-- Import shared ownership data -->
+    <script src="ownerships.js"></script>
+    <script>
+        const assessmentInput = document.getElementById('assessment-amount');
+        const resultContainer = document.getElementById('result-container');
+        const assessmentRangeEl = document.getElementById('assessment-range');
+        const resultTableBody = document.getElementById('result-table-body');
+
+        function formatCurrency(value) {
+            const numericValue = value.replace(/[^\d.]/g, '');
+            const number = parseFloat(numericValue) || 0;
+            if (number === 0) return '';
+            return number.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        function parseCurrency(value) {
+            const numericValue = value.replace(/[^\d.]/g, '');
+            return parseFloat(numericValue) || 0;
+        }
+
+        function calculateAssessment() {
+            const totalAmount = parseCurrency(assessmentInput.value);
+            resultTableBody.innerHTML = '';
+            if (!totalAmount || totalAmount <= 0) {
+                resultContainer.classList.add('opacity-0');
+                return;
+            }
+            let min = Infinity, max = -Infinity;
+            let rows = [];
+            Object.entries(ownershipData).forEach(([unit, share], idx) => {
+                const cost = totalAmount * share / 100.0;
+                if (cost < min) min = cost;
+                if (cost > max) max = cost;
+                rows.push({unit, cost});
+            });
+            // Sort by unit number
+            rows.sort((a, b) => a.unit.localeCompare(b.unit, undefined, {numeric: true}));
+            rows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                if (idx % 2 !== 0) tr.classList.add('bg-gray-50');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">${row.unit}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 text-right font-mono">${row.cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                `;
+                resultTableBody.appendChild(tr);
+            });
+            assessmentRangeEl.textContent = `${min.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} - ${max.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}`;
+            resultContainer.classList.remove('opacity-0');
+        }
+
+        assessmentInput.addEventListener('input', function(e) {
+            const cursorPosition = e.target.selectionStart;
+            const oldValue = e.target.value;
+            const newValue = formatCurrency(oldValue);
+            if (newValue !== oldValue) {
+                e.target.value = newValue;
+                const diff = newValue.length - oldValue.length;
+                e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
+            }
+            calculateAssessment();
+        });
+
+        document.addEventListener('DOMContentLoaded', calculateAssessment);
+    </script>
+</body>
+</html>
