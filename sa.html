@@ -112,14 +112,14 @@
 
             // Get the ownership percentage for the selected unit
             const percentage = ownershipData[selectedUnit];
-            const calculatedAmount = totalAmount * percentage;
+            const calculatedAmount = totalAmount * percentage / 100.0;
             
             // Format the numbers for display
             const formattedAmount = calculatedAmount.toLocaleString('en-US', {
                 style: 'currency',
                 currency: 'USD'
             });
-            const formattedPercentage = (percentage * 100).toFixed(2) + '%';
+            const formattedPercentage = (percentage).toFixed(2) + '%';
 
             // Display the results
             assessmentResultEl.textContent = formattedAmount;
